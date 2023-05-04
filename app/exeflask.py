@@ -79,11 +79,11 @@ def car():
         'hp': hp,
     }
 
-    coche= {
-        'marca':  marca,
-        'modello': modelo,
-        'cv': cv
-    }
+    # coche= {
+    #     'marca':  marca,
+    #     'modello': modelo,
+    #     'cv': cv
+    # }
     coche_bien_codificado= dv.transform(coche)
     
     try:

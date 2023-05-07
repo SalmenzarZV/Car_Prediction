@@ -1,6 +1,10 @@
 from flask import Flask, request
 import pickle
 from flask_cors import CORS
+import json
+import os
+import tensorflow as tf
+import pandas as pd
 
 application = Flask(__name__)
 CORS(application)
@@ -20,79 +24,38 @@ def get_method():
 def main():
     return '<p>Hello, World!</p>'
 
-@application.get('/polo')
-def polo():
-    with open('cochesnet.pck', 'rb') as file:
-        dv, model = pickle.load(file)
-
-    coche = {
-        'marca': 'vw',
-        'modelo': 'polo',
-        'cv': 110
-    }
-
-    coche_bien_codificado = dv.transform(coche)
-    precio = model.predict(coche_bien_codificado)
-    return {
-        'precio': precio[0]
-    }
-
 @application.get('/car')
 def car():
-    with open('cochesnet.pck', 'rb') as file:
-     dv, neural_model = pickle.load(file)
+    neural_model = tf.keras.models.load_model('Car_Prediction\\app\\cochesnet.hdf5')
+
+    with open('Car_Prediction\\app\\scaler.pkl', 'rb') as file:
+     scaler = pickle.load(file)
+    
+    with open('Car_Prediction\\app\\cochesnet.pkl', 'rb') as file:
+     dv = pickle.load(file)
+
+    campos_numericos = ['km', 'year', 'cubicCapacity', 'doors', 'hp']
 
     # obtenemos el coche de la request
 
-    # marca = request.args.get('marca', '')
-    # modelo = request.args.get('modelo', '')
-    # cv_str = request.args.get('cv', '0')
-    # cv = int(cv_str)
-
-    color = request.args.get('color', '')
-    fuelType = request.args.get('fuelType', '')
-    km = int(request.args.get('km', ''))
-    make = request.args.get('make', '')
-    model = request.args.get('model', '')
-    province = request.args.get('province', '')
-    transmissionType = request.args.get('transmissionType', '')
-    year = int(request.args.get('year', ''))
-    seller_type = request.args.get('seller_type', '')
-    bodyType = request.args.get('bodyType', '')
-    cubicCapacity = request.args.get('cubicCapacity', '')
-    doors = request.args.get('doors', '')
-    hp = request.args.get('hp', '')
-
-    coche = {
-        'color': color,
-        'fuelType': fuelType,
-        'km': km,
-        'make': make,
-        'model': model,
-        'province': province,
-        'transmissionType': transmissionType,
-        'year': year,
-        'seller_type': seller_type,
-        'bodyType': bodyType,
-        'cubicCapacity': cubicCapacity,
-        'doors': doors,
-        'hp': hp,
-    }
-
-    # coche= {
-    #     'marca':  marca,
-    #     'modello': modelo,
-    #     'cv': cv
-    # }
-    coche_bien_codificado= dv.transform(coche)
-    
+    coche = json.loads(request.args.get('coche', ''))
+    coche['year'] = int(coche['year'])
+    coche['hp'] = int(coche['hp'])
+    coche['km'] = int(coche['km'])
+    coche['doors'] = int(coche['doors'])
+    coche['cubicCapacity'] = int(coche['cubicCapacity'])
+    coche_df = pd.DataFrame(coche, index=[0])
+    coche_df[campos_numericos]= scaler.transform(coche_df[campos_numericos])
+    coche_dv = dv.transform(coche_df.to_dict(orient='records'))
     try:
-        precio = neural_model.predict(coche_bien_codificado)
+        precio = neural_model.predict(coche_dv).tolist()
     except:
-         precio = 0
-         
+        precio = [0]
+    
+    print(precio)
+
     return {
-         'precio': precio[0]
+       'precio': precio[0]
     }
 
 
